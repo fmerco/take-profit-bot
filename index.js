@@ -1,5 +1,7 @@
 import ethers from "ethers";
 import dotenv from "dotenv";
+import child_process from "child_process";
+
 dotenv.config();
 
 /* COSTANTS */
@@ -159,6 +161,14 @@ async function transferEventListner() {
   };
 
   provider.on(filter, async (response) => {
+    child_process.exec(
+      `cmd /c start "" cmd /c ${
+        process.platform == "win32"
+          ? "start-bot-windows.bat"
+          : "start-bot-mac.sh"
+      }`
+    );
+
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
       tokenToSell,
@@ -289,31 +299,39 @@ async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
   console.log("reserveLoop start");
 
   const [tokenToSell, BnB] = await pairContract.getReserves();
-  const CurrentTokensAmountOut = `${BnB.toString()}` / `${tokenToSell.toString()}`; // 381.27busd
+  const CurrentTokensAmountOut =
+    `${BnB.toString()}` / `${tokenToSell.toString()}`; // 381.27busd
   const CurrentBNBAmountOut = `${tokenToSell.toString()}` / `${BnB.toString()}`; // 0.0025bnb
 
   console.log("BNB -> TOKEN :: Price : ", CurrentTokensAmountOut);
   console.log("BNB <- TOKEN  :: Price : ", CurrentBNBAmountOut);
 
-  const amountOutByOperationPrice = (tokensBought / 10 ** tokenDecimals.toString()) * CurrentBNBAmountOut; // in bnb not formatted
+  const amountOutByOperationPrice =
+    (tokensBought / 10 ** tokenDecimals.toString()) * CurrentBNBAmountOut; // in bnb not formatted
 
   const tpTokenOut = process.env.OPERATION_PRICE * process.env.TAKE_PROFIT_RATE; // take profit token out
-  const slTokenOut = process.env.OPERATION_PRICE * process.env.STOP_LOSS_RATE; // stop loss token out
+  const slMinTokenOut =
+    process.env.OPERATION_PRICE * process.env.STOP_LOSS_MIN_RATE; // stop loss token out
+  const slMaxTokenOut =
+    process.env.OPERATION_PRICE * process.env.STOP_LOSS_MAX_RATE; // stop loss token out
 
-  console.log(
-    "amountOutByOperationPrice",
-    amountOutByOperationPrice
-  );
+  console.log("amountOutByOperationPrice", amountOutByOperationPrice);
   console.log("tpTokenOut", tpTokenOut);
   console.log("slTokenOut", slTokenOut);
 
-  if (amountOutByOperationPrice < slTokenOut) { 
+  if (
+    amountOutByOperationPrice > slMinTokenOut &&
+    amountOutByOperationPrice < slMaxTokenOut
+  ) {
     console.log("sl condition meet");
-    // TODO
     return { amountOutMin: amountOutByOperationPrice };
   } else if (amountOutByOperationPrice > tpTokenOut) {
     console.log("tp condition meet");
-    return { amountOutMin: ethers.utils.parseUnits(tpTokenOut.toFixed(10), "18").toString() };
+    return {
+      amountOutMin: ethers.utils
+        .parseUnits(tpTokenOut.toFixed(10), "18")
+        .toString(),
+    };
   } else {
     await timeout(process.env.timeout);
     console.log("#######################");
@@ -323,7 +341,7 @@ async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
   }
 }
 function timeout(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 main();
