@@ -14,4 +14,9 @@
 
 - launch "start-bot.bat" file, it will start bot cli
 
+TODO
+- Range for stop loss
+- MacOS support
+- Repeat sell order on error
+- Multi Thread
 
