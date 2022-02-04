@@ -161,13 +161,13 @@ async function transferEventListner() {
   };
 
   provider.on(filter, async (response) => {
-    child_process.exec(
+    /*child_process.exec(
       `cmd /c start "" cmd /c ${
         process.platform == "win32"
           ? "start-bot-windows.bat"
           : "start-bot-mac.sh"
       }`
-    );
+    );*/
 
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
