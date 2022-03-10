@@ -19,7 +19,7 @@
 
 ## Features Added
 - Range for stop loss
-- MacOS support
+- Linux support
 - Multi Thread
 
 
