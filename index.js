@@ -160,14 +160,14 @@ async function transferEventListner() {
     topics: [topic, null, ethers.utils.hexZeroPad(accountAddress, 32)],
   };
 
-  provider.on(filter, async (response) => {
-    /*child_process.exec(
+  provider.once(filter, async (response) => {
+    child_process.exec(
       `cmd /c start "" cmd /c ${
         process.platform == "win32"
           ? "start-bot-windows.bat"
-          : "start-bot-mac.sh"
+          : "start-bot-unix.sh"
       }`
-    );*/
+    );
 
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
@@ -185,13 +185,17 @@ async function transferEventListner() {
         return k.toString();
       });
 
-    await approve(
+
+    console.log('start :: approve')
+    const receipt = await approve(
       tokenContract,
       tokensBought,
       process.env.GAS_LIMIT,
       process.env.GAS_PRICE,
       tokenDecimals
     );
+    console.log('end :: approve', receipt)
+
 
     const pairAddress = await factory.getPair(
       tokenToSell,
@@ -212,7 +216,7 @@ async function transferEventListner() {
       );
       console.log("amountToSell", tokensBought);
       console.log("amountOutMin", result.amountOutMin);
-
+      
       swapExactTokensForETH(
         router,
         tokensBought,
@@ -282,23 +286,15 @@ async function approve(
     }
   );
 
-  return tx
-    .wait()
-    .then((resp) => {
-      console.log(`TOKEN APPROVED WITH SUCCESS! ;)
-tx: ${resp.transactionHash}
-#############################################`);
-    })
-    .catch((resp) => {
-      console.log(`APPROVE ERROR!
-tx: ${resp.transactionHash}
-#############################################`);
-    });
+  const receipt = await tx.wait();
+
+  return receipt;
 }
+
 async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
   console.log("reserveLoop start");
 
-  const [tokenToSell, BnB] = await pairContract.getReserves();
+  const [tokenToSell, BnB, timestamp] = await pairContract.getReserves();
   const CurrentTokensAmountOut =
     `${BnB.toString()}` / `${tokenToSell.toString()}`; // 381.27busd
   const CurrentBNBAmountOut = `${tokenToSell.toString()}` / `${BnB.toString()}`; // 0.0025bnb
@@ -311,26 +307,25 @@ async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
 
   const tpTokenOut = process.env.OPERATION_PRICE * process.env.TAKE_PROFIT_RATE; // take profit token out
   const slMinTokenOut =
-    process.env.OPERATION_PRICE * process.env.STOP_LOSS_MIN_RATE; // stop loss token out
+    process.env.OPERATION_PRICE * process.env.STOP_LOSS_RATE_MIN; // stop loss token out
   const slMaxTokenOut =
-    process.env.OPERATION_PRICE * process.env.STOP_LOSS_MAX_RATE; // stop loss token out
+    process.env.OPERATION_PRICE * process.env.STOP_LOSS_RATE_MAX; // stop loss token out
 
   console.log("amountOutByOperationPrice", amountOutByOperationPrice);
   console.log("tpTokenOut", tpTokenOut);
-  console.log("slTokenOut", slTokenOut);
+  console.log("slMinTokenOut", slMinTokenOut);
+  console.log("slMaxTokenOut", slMaxTokenOut);
 
   if (
     amountOutByOperationPrice > slMinTokenOut &&
     amountOutByOperationPrice < slMaxTokenOut
   ) {
     console.log("sl condition meet");
-    return { amountOutMin: amountOutByOperationPrice };
+    return { amountOutMin: slMinTokenOut };
   } else if (amountOutByOperationPrice > tpTokenOut) {
     console.log("tp condition meet");
     return {
-      amountOutMin: ethers.utils
-        .parseUnits(tpTokenOut.toFixed(10), "18")
-        .toString(),
+      amountOutMin: tpTokenOut
     };
   } else {
     await timeout(process.env.timeout);
