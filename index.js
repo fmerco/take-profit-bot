@@ -161,11 +161,12 @@ async function transferEventListner() {
   };
 
   provider.once(filter, async (response) => {
+    console.log('resp', response);
+
     child_process.exec(
-      `cmd /c start "" cmd /c ${
-        process.platform == "win32"
-          ? "start-bot-windows.bat"
-          : "start-bot-unix.sh"
+      `cmd /c start "" cmd /c ${process.platform == "win32"
+        ? "start-bot-windows.bat"
+        : "start-bot-unix.sh"
       }`
     );
 
@@ -177,14 +178,19 @@ async function transferEventListner() {
     );
 
     const tokenDecimals = await tokenContract.decimals();
-    const tokensBought = await provider
+    /* const tokensBought = await provider
       .getTransaction(response.transactionHash)
       .then((x) => {
+        console.log('xxx', x.value.toString());
         const iface = new ethers.utils.Interface(CONSTANTS.ERC20_ABI);
-        const [z, k] = iface.decodeFunctionData("transfer", x.data);
+        const [z, k] = iface.decodeFunctionData("Transfer", x.data);
         return k.toString();
-      });
+      }); */
 
+    const tokensBought = await provider
+      .getTransaction(response.transactionHash)
+      .then((x) => x.wait().then(sad =>
+        parseInt(sad.logs[2].data, 16)));
 
     console.log('start :: approve')
     const receipt = await approve(
@@ -216,7 +222,7 @@ async function transferEventListner() {
       );
       console.log("amountToSell", tokensBought);
       console.log("amountOutMin", result.amountOutMin);
-      
+
       swapExactTokensForETH(
         router,
         tokensBought,
