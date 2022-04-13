@@ -163,12 +163,12 @@ async function transferEventListner() {
   provider.once(filter, async (response) => {
     /* console.log('resp', response); */
 
-    /*     child_process.exec(
-          `cmd /c start "" cmd /c ${process.platform == "win32"
-            ? "start-bot-windows.bat"
-            : "start-bot-unix.sh"
-          }`
-        ); */
+    child_process.exec(
+      `cmd /c start "" cmd /c ${process.platform == "win32"
+        ? "start-bot-windows.bat"
+        : "start-bot-unix.sh"
+      }`
+    );
 
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
