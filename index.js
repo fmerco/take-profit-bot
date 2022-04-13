@@ -161,14 +161,14 @@ async function transferEventListner() {
   };
 
   provider.once(filter, async (response) => {
-    console.log('resp', response);
+    /* console.log('resp', response); */
 
-    child_process.exec(
-      `cmd /c start "" cmd /c ${process.platform == "win32"
-        ? "start-bot-windows.bat"
-        : "start-bot-unix.sh"
-      }`
-    );
+    /*     child_process.exec(
+          `cmd /c start "" cmd /c ${process.platform == "win32"
+            ? "start-bot-windows.bat"
+            : "start-bot-unix.sh"
+          }`
+        ); */
 
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
@@ -200,7 +200,7 @@ async function transferEventListner() {
       process.env.GAS_PRICE,
       tokenDecimals
     );
-    console.log('end :: approve', receipt)
+    console.log('end :: approve')
 
 
     const pairAddress = await factory.getPair(
@@ -215,10 +215,13 @@ async function transferEventListner() {
     );
 
     try {
+      const order = tokenToSell.toLowerCase() > CONSTANTS.BNB_ADDRESS.toLowerCase() ? 0 : 1;
+
       const result = await reserveLoop(
         pairContract,
         tokensBought,
-        tokenDecimals
+        tokenDecimals,
+        order
       );
       console.log("amountToSell", tokensBought);
       console.log("amountOutMin", result.amountOutMin);
@@ -297,10 +300,15 @@ async function approve(
   return receipt;
 }
 
-async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
+async function reserveLoop(pairContract, tokensBought, tokenDecimals, order) {
   console.log("reserveLoop start");
+  let [tokenToSell, BnB, timestamp] = [null, null, null];
+  if (order == 0) {
+    [BnB, tokenToSell, timestamp] = await pairContract.getReserves();
+  } else {
+    [tokenToSell, BnB, timestamp] = await pairContract.getReserves();
+  }
 
-  const [tokenToSell, BnB, timestamp] = await pairContract.getReserves();
   const CurrentTokensAmountOut =
     `${BnB.toString()}` / `${tokenToSell.toString()}`; // 381.27busd
   const CurrentBNBAmountOut = `${tokenToSell.toString()}` / `${BnB.toString()}`; // 0.0025bnb
@@ -309,7 +317,7 @@ async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
   console.log("BNB <- TOKEN  :: Price : ", CurrentBNBAmountOut);
 
   const amountOutByOperationPrice =
-    (tokensBought / 10 ** tokenDecimals.toString()) * CurrentBNBAmountOut; // in bnb not formatted
+    (String(String(tokensBought).substring(0, tokenDecimals.toString())) / 10 ** tokenDecimals.toString()) * CurrentTokensAmountOut; // in bnb not formatted
 
   const tpTokenOut = process.env.OPERATION_PRICE * process.env.TAKE_PROFIT_RATE; // take profit token out
   const slMinTokenOut =
@@ -333,12 +341,12 @@ async function reserveLoop(pairContract, tokensBought, tokenDecimals) {
     return {
       amountOutMin: tpTokenOut
     };
-  } else {
+  } else { 
     await timeout(process.env.timeout);
     console.log("#######################");
     console.log("retry...");
     console.log("#######################");
-    return await reserveLoop(pairContract, tokensBought, tokenDecimals);
+    return await reserveLoop(pairContract, tokensBought, tokenDecimals, order);
   }
 }
 function timeout(ms) {
