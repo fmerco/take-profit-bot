@@ -12,7 +12,7 @@
 
 - open file .env and insert a custom rpc ( optional ), your private key ( required ), operation price in bnb, take profit and stop loss ratio ( eg. 1.2 for 20% profit and 0.8 for -20%) and if you want, change the parameters for the gas fee
 
-- launch "start-bot.bat" file, it will start bot cli
+- launch "start-windows.exe" or "start-macos" or "start-linux" file, it will start bot cli
 
 ## TODO
 - Repeat sell order on error

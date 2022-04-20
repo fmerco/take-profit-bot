@@ -1,6 +1,6 @@
-import ethers from "ethers";
-import dotenv from "dotenv";
-import child_process from "child_process";
+const ethers = require("ethers");
+const dotenv = require("dotenv");
+const child_process = require("child_process");
 
 dotenv.config();
 
@@ -163,12 +163,11 @@ async function transferEventListner() {
   provider.once(filter, async (response) => {
     /* console.log('resp', response); */
 
-    child_process.exec(
-      `cmd /c start "" cmd /c ${process.platform == "win32"
-        ? "start-bot-windows.bat"
-        : "start-bot-unix.sh"
-      }`
-    );
+    if(process.platform == "win32") {
+      child_process.exec(
+        `cmd /c start "" cmd /c start-bot-windows.bat`
+      );
+    }
 
     const tokenToSell = response.address;
     const tokenContract = new ethers.Contract(
